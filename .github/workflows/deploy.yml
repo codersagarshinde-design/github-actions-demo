@@ -1,33 +1,82 @@
-name: Deploy to Vercel
+name: CI/CD Pipeline
 
 on:
+
+  # Automatic CI when code is pushed
   push:
     branches:
       - main
 
+  # Manual trigger for deployment
+  workflow_dispatch:
+
 jobs:
 
-  deploy:
+  build-and-test:
+
     runs-on: ubuntu-latest
 
     steps:
 
-      - name: Checkout Code
+      # Pull repository code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Node.js
+      # Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # Install project dependencies
+      - name: Install Dependencies
+        run: npm install
+
+      # Run tests
+      - name: Run Tests
+        run: npm test
+
+      # Build application
+      - name: Build Application
+        run: npm run build
+
+  deploy:
+
+    # Deploy only when manually triggered
+    if: github.event_name == 'workflow_dispatch'
+
+    needs: build-and-test
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Pull repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Install Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Install dependencies
+      - name: Install Dependencies
+        run: npm install
+
+      # Install Vercel CLI
       - name: Install Vercel CLI
         run: npm install --global vercel
 
+      # Pull Vercel project settings
       - name: Pull Vercel Environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
+      # Build project for production
       - name: Build Project
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Deploy Project
+      # Deploy to Vercel
+      - name: Deploy to Vercel
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
